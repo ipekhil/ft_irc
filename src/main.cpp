@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
 
     try {
         Server server(port, password);
-        server.init();
         server.start();
     } catch (const std::exception &e) {
         std::cerr << "Server Error: " << e.what() << std::endl;
