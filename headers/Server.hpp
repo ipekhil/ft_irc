@@ -23,6 +23,8 @@ private:
     void setupSocket();
     void acceptNewClient();
     void handleClientData(size_t index);
+	void handleCommand(int client_fd, const std::string& line);
+	void sendReply(int client_fd, const std::string& message);
     
 public:
     Server(int port, const std::string& password);

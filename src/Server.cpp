@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
-
+#include <sstream>
 Server::Server(int port, const std::string& password) : _port(port), _password(password), _server_fd(-1) 
 {
     setupSocket();
@@ -141,9 +141,102 @@ void Server::handleClientData(size_t index) {
         _fds.erase(_fds.begin() + index);
         return;
     }
+	else
+		std::cout << "RECV";
 
     //gelen veriyi buffera ekler
-    _clients[client_fd].getBuffer().append(temp_buf, bytes_read);
-    std::cout << "[MSG from fd " << client_fd << "]: " << temp_buf << std::flush;
+
+	handleCommand(client_fd, std::string(temp_buf, bytes_read));
 }
 
+void Server::handleCommand(int client_fd, const std::string& line) {
+    std::istringstream iss(line);
+    std::string command;
+    iss >> command;
+	//iss 
+
+	//en başta boşluk varsa atlar ve mesela PASSden sonrak ilk boşluğa kadar oaln kısmı command'a atar.
+    if (command.empty())
+        return;
+
+	//geri kalan her sözcüğü bir argüman olarak alır ve arka arkaya ekler
+    std::vector<std::string> args;
+    std::string arg;
+    while (iss >> arg)
+        args.push_back(arg);
+
+	//cilent_fd ile clint takma adına eşliyoruz & olma sebebi kopysasının oluşturlmamasının istenmesi
+    Client& client = _clients[client_fd];
+
+	//sunucuya şifresi ile giriş
+    if (command == "PASS") {
+        if (args.empty()) {
+			sendReply(client_fd, ":ircserv 461 * PASS :Not enough parameters");
+			return;
+        }
+        if (client.getHasPassword() || client.getIsRegistered()) {
+            sendReply(client_fd, ":ircserv 462 * :You may not reregister");
+            return;
+        }
+        if (args[0] == _password) {
+            client.setHasPassword(true);
+            std::cout << "[LOG] Client fd " << client_fd << " authenticated." << std::endl;
+        } else {
+            sendReply(client_fd, ":ircserv 464 * :Password incorrect");
+        }
+    }
+	else if (command == "NICK")
+	{
+		if (!client.getHasPassword()) {
+			sendReply(client_fd, ":ircserv 451 * :You have not registered");
+			return;
+		}
+		if (args.empty()) {
+			sendReply(client_fd, ":ircserv 461 * NICK :Not enough parameters");
+			return;
+		}
+		std::map<int, Client>::iterator it = _clients.begin();
+		while (it != _clients.end())
+		{
+			if (it->first != client_fd && it->second.getNickname() == args[0]) {
+                sendReply(client_fd, ":ircserv 433 * " + args[0] + " :Nickname is already in use");
+                return;
+            }
+			++it;
+		}
+		client.setNickname(args[0]);
+		std::cout << "[LOG] Client fd " << client_fd << " set nickname to: " << args[0] << std::endl;
+	}
+	else if (command == "USER")
+    {
+        if (!client.getHasPassword()) {
+            sendReply(client_fd, ":ircserv 451 * :You have not registered");
+            return;
+        }
+        if (client.getIsRegistered()) {
+            sendReply(client_fd, ":ircserv 462 * :You may not reregister");
+            return;
+        }
+        if (args.size() < 4) {
+            sendReply(client_fd, ":ircserv 461 * USER :Not enough parameters");
+            return;
+        }
+        client.setUsername(args[0]);
+    }
+
+    if (!client.getIsRegistered() && client.getHasPassword()
+        && !client.getNickname().empty() && !client.getUsername().empty()) {
+        client.setIsRegistered(true);
+        sendReply(client_fd, ":ircserv 001 " + client.getNickname() + " :Welcome to the ft_irc Network, " + client.getNickname());
+        std::cout << "[LOG] Client fd " << client_fd << " registered as " << client.getNickname() << std::endl;
+    }
+	
+	
+}
+
+//sunucudan istemciye mesaj gönderirken her zaman \r\n ekliyoruz mesajın sonuna bu şekilde daha güvenli oluyprmuş
+void Server::sendReply(int client_fd, const std::string& message) {
+    std::string full_msg = message + "\r\n";
+    if (send(client_fd, full_msg.c_str(), full_msg.size(), 0) < 0)
+        std::cerr << "[ERROR] Failed to send message to fd: " << client_fd << std::endl;
+}

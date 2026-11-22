@@ -7,6 +7,10 @@ class Client {
 private:
     int _fd;
     std::string _buffer;
+	bool        _hasPassword;
+    bool        _isRegistered;
+    std::string _nickname;
+    std::string _username;
 
 public:
     Client();
@@ -17,6 +21,16 @@ public:
 
     int getFd() const;
     std::string& getBuffer();
+
+	bool getHasPassword() const;
+	void setHasPassword(bool hasPassword);
+	bool getIsRegistered() const;
+	void setIsRegistered(bool isRegistered);
+	const std::string& getNickname() const;
+	void setNickname(const std::string& nickname);
+	const std::string& getUsername() const;
+	void setUsername(const std::string& username);
+
 };
 
 #endif
