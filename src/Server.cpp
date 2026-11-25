@@ -150,7 +150,7 @@ void Server::handleClientData(size_t index) {
 	buf.append(temp_buf, bytes_read);
 	//npos no posiiton demektir.npos döndünce döngüden çık dmektir yani bulunamadığında
 	size_t pos = 0;
-	while ((pos = buf.find('\n') != std::string::npos))
+	while ((pos = buf.find('\n')) != std::string::npos)
 	{
 		std::string line = buf.substr(0, pos);
 		buf.erase(0, pos + 1);
