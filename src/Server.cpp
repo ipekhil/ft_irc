@@ -175,7 +175,19 @@ void Server::handleCommand(int client_fd, const std::string& line) {
     std::vector<std::string> args;
     std::string arg;
     while (iss >> arg)
+	{
+		//: olan komutları işler
+		if (arg[0] == ':')
+		{
+			std::string rest;
+			//:'dan sonrasını komple restin içine atar
+			std::getline(iss, rest);
+			args.push_back(arg.substr(1) + rest);
+			std::cout << arg.substr(1) + rest << std::endl;
+			break;
+		}
         args.push_back(arg);
+	}
 
 	//cilent_fd ile clint takma adına eşliyoruz & olma sebebi kopysasının oluşturlmamasının istenmesi
     Client& client = _clients[client_fd];
